@@ -1,3 +1,17 @@
+/* eslint-disable no-useless-escape */
+/* eslint-disable no-param-reassign */
+/* eslint-disable no-nested-ternary */
+/* eslint-disable eqeqeq */
+/* eslint-disable no-bitwise */
+/* eslint-disable no-var */
+/* eslint-disable no-shadow */
+/* eslint-disable prefer-const */
+/* eslint-disable no-regex-spaces */
+/* eslint-disable one-var */
+/* eslint-disable prefer-template */
+/* eslint-disable prettier/prettier */
+const isExternalUrl = (url) => true;
+
 const TAGS = {
 	'' : ['<em>','</em>'],
 	_ : ['<strong>','</strong>'],
@@ -22,11 +36,13 @@ function encodeAttr(str) {
 }
 
 /** Parse Markdown into an HTML String. */
-export default function parse(md, prevLinks) {
+export default function parse(md, prevLinks, options) {
+  options = options || {};
+
 	let tokenizer = /((?:^|\n+)(?:\n---+|\* \*(?: \*)+)\n)|(?:^``` *(\w*)\n([\s\S]*?)\n```$)|((?:(?:^|\n+)(?:\t|  {2,}).+)+\n*)|((?:(?:^|\n)([>*+-]|\d+\.)\s+.*)+)|(?:\!\[([^\]]*?)\]\(([^\)]+?)\))|(\[)|(\](?:\(([^\)]+?)\))?)|(?:(?:^|\n+)([^\s].*)\n(\-{3,}|={3,})(?:\n+|$))|(?:(?:^|\n+)(#{1,6})\s*(.+)(?:\n+|$))|(?:`([^`].*?)`)|(  \n\n*|\n{2,}|__|\*\*|[_*]|~~)/gm,
 		context = [],
 		out = '',
-		links = prevLinks || {},
+    links = prevLinks || {},
 		last = 0,
 		chunk, prev, token, inner, t;
 
@@ -67,7 +83,7 @@ export default function parse(md, prevLinks) {
 			if (t.match(/\./)) {
 				token[5] = token[5].replace(/^\d+/gm, '');
 			}
-			inner = parse(outdent(token[5].replace(/^\s*[>*+.-]/gm, '')));
+			inner = parse(outdent(token[5].replace(/^\s*[>*+.-]/gm, '')), {}, options);
 			if (t==='>') t = 'blockquote';
 			else {
 				t = t.match(/\./) ? 'ol' : 'ul';
@@ -81,7 +97,9 @@ export default function parse(md, prevLinks) {
 		}
 		// Links:
 		else if (token[10]) {
-			out = out.replace('<a>', `<a href="${encodeAttr(token[11] || links[prev.toLowerCase()])}">`);
+      const url = encodeAttr(token[11] || links[prev.toLowerCase()]);
+      const urlAttr = isExternalUrl(url) ? ` target="_blank" rel="noopener${options.urlDoFollow ? '' : ' nofollow'}"` : '';
+			out = out.replace('<a>', `<a href="${url}"${urlAttr}>`);
 			chunk = flush() + '</a>';
 		}
 		else if (token[9]) {
@@ -90,7 +108,7 @@ export default function parse(md, prevLinks) {
 		// Headings:
 		else if (token[12] || token[14]) {
 			t = 'h' + (token[14] ? token[14].length : (token[13][0]==='='?1:2));
-			chunk = '<'+t+'>' + parse(token[12] || token[15], links) + '</'+t+'>';
+			chunk = '<'+t+'>' + parse(token[12] || token[15], links, options) + '</'+t+'>';
 		}
 		// `code`:
 		else if (token[16]) {
